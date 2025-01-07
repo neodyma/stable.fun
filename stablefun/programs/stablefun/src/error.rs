@@ -6,4 +6,6 @@ pub enum StablefunError {
     UnspecError,
     #[msg("Invalid Fiat")]
     InvalidFiat,
+    #[msg("Invalid Amount")]
+    InvalidAmount,
 }

@@ -7,7 +7,6 @@ import {
     createSetAuthorityInstruction,
     ExtensionType,
     getAccount,
-    getAssociatedTokenAddress,
     getAssociatedTokenAddressSync,
     getMint,
     getMintLen,
@@ -31,7 +30,7 @@ import {
     Transaction
 } from "@solana/web3.js";
 
-const STABLEFUN_MARKET_ID = new PublicKey("STBL1grL2qPy4fzVk7Ko2kY8Cb7EwKRYaGHaAptNdSr");
+import { STABLEFUN_MARKET_ID } from "@/utils/stablefun-utils";
 
 const bondToFiat = {
     "ustry": "USD",
@@ -43,7 +42,8 @@ const bondToFiat = {
 
 // create a new stablebond token, with the authority set to the stablefun market
 export default async function createStablebondToken(
-    payer: Keypair,
+    // payer: Keypair,
+    payer: PublicKey,
     connection: Connection,
     name: string,
     symbol: string,
@@ -51,8 +51,7 @@ export default async function createStablebondToken(
     bond: keyof typeof bondToFiat
 ) {
     const mint = Keypair.generate()
-    const decimals = 9
-    const supply = 0
+    const decimals = 6
 
     const metadata: TokenMetadata = {
         mint: mint.publicKey,
@@ -62,12 +61,17 @@ export default async function createStablebondToken(
         additionalMetadata: [["Bond", bond] as const]
     }
 
+    const [mintAuthorityPDA, bump] = await PublicKey.findProgramAddressSync(
+        [Buffer.from("stablefun_mint")],
+        STABLEFUN_MARKET_ID
+    );
+
     const mintLen = getMintLen([ExtensionType.MetadataPointer])
     const metaLen = TYPE_SIZE + LENGTH_SIZE + pack(metadata).length
     const lamports = await connection.getMinimumBalanceForRentExemption(mintLen + metaLen)
 
     const createMintAccountInstr = SystemProgram.createAccount({
-        fromPubkey: payer.publicKey,
+        fromPubkey: payer,
         lamports,
         newAccountPubkey: mint.publicKey,
         programId: TOKEN_2022_PROGRAM_ID,
@@ -76,7 +80,7 @@ export default async function createStablebondToken(
 
     const initMetaPointerInstr = createInitializeMetadataPointerInstruction(
         mint.publicKey,
-        payer.publicKey,
+        payer,
         mint.publicKey,
         TOKEN_2022_PROGRAM_ID,
     )
@@ -84,8 +88,8 @@ export default async function createStablebondToken(
     const initMintInstr = createInitializeMintInstruction(
         mint.publicKey,
         decimals,
-        payer.publicKey,
-        payer.publicKey,
+        payer,
+        payer,
         TOKEN_2022_PROGRAM_ID,
     )
 
@@ -96,29 +100,29 @@ export default async function createStablebondToken(
         name: metadata.name,
         symbol: metadata.symbol,
         uri: metadata.uri,
-        mintAuthority: payer.publicKey,
-        updateAuthority: payer.publicKey,
+        mintAuthority: payer,
+        updateAuthority: payer,
     })
 
     const updateMetaInstr = createUpdateFieldInstruction({
         programId: TOKEN_2022_PROGRAM_ID,
         metadata: mint.publicKey,
-        updateAuthority: payer.publicKey,
+        updateAuthority: payer,
         field: metadata.additionalMetadata[0][0],
         value: metadata.additionalMetadata[0][1],
     })
 
     const userAta = getAssociatedTokenAddressSync(
         mint.publicKey,
-        payer.publicKey,
+        payer,
         false,
         TOKEN_2022_PROGRAM_ID,
     )
 
     const createUserAtaInstr = createAssociatedTokenAccountInstruction(
-        payer.publicKey,
+        payer,
         userAta,
-        payer.publicKey,
+        payer,
         mint.publicKey,
         TOKEN_2022_PROGRAM_ID,
     )
@@ -131,7 +135,7 @@ export default async function createStablebondToken(
     )
 
     const createStablefunAtaInstr = createAssociatedTokenAccountInstruction(
-        payer.publicKey,
+        payer,
         stablefunAta,
         STABLEFUN_MARKET_ID,
         mint.publicKey,
@@ -151,8 +155,8 @@ export default async function createStablebondToken(
     const mintInstr = createMintToCheckedInstruction(
         mint.publicKey,
         stablefunAta,
-        payer.publicKey,
-        100,
+        payer,
+        100e9,
         decimals,
         undefined,
         TOKEN_2022_PROGRAM_ID,
@@ -161,16 +165,16 @@ export default async function createStablebondToken(
     // update authorities to the stablefun market
     const setMintAuthorityInstr = createSetAuthorityInstruction(
         mint.publicKey,
-        payer.publicKey,
+        payer,
         AuthorityType.MintTokens,
-        STABLEFUN_MARKET_ID,
+        mintAuthorityPDA,
         undefined,
         TOKEN_2022_PROGRAM_ID
     )
 
     const setOwnerInstr = createSetAuthorityInstruction(
         mint.publicKey,
-        payer.publicKey,
+        payer,
         AuthorityType.FreezeAccount,
         STABLEFUN_MARKET_ID,
         undefined,
@@ -190,60 +194,63 @@ export default async function createStablebondToken(
         setOwnerInstr
     )
 
-    const sig = await sendAndConfirmTransaction(
-        connection,
-        transaction,
-        [payer, mint],
-    )
+    // @ts-ignore expexted to be unused
+    // const sig = await sendAndConfirmTransaction(
+    //     connection,
+    //     transaction,
+    //     [payer, mint],
+    // )
 
-    const accountDetails = await getAccount(
-        connection,
-        stablefunAta,
-        "finalized",
-        TOKEN_2022_PROGRAM_ID,
-    );
-    console.log("Associate Token Account =====>", accountDetails);
+    return { transaction, mint }
 
-    // Fetching the mint
-    const mintDetails = await getMint(
-        connection,
-        mint.publicKey,
-        undefined,
-        TOKEN_2022_PROGRAM_ID,
-    );
-    console.log("Mint =====>", mintDetails);
+    // const accountDetails = await getAccount(
+    //     connection,
+    //     stablefunAta,
+    //     "finalized",
+    //     TOKEN_2022_PROGRAM_ID,
+    // );
+    // console.log("Associate Token Account =====>", accountDetails);
 
-    // Since the mint stores the metadata in itself, we can just get it like this
-    const onChainMetadata = await getTokenMetadata(connection, mint.publicKey);
-    // Now we can see the metadata coming with the mint
-    console.log("onchain metadata =====>", onChainMetadata);
+    // // Fetching the mint
+    // const mintDetails = await getMint(
+    //     connection,
+    //     mint.publicKey,
+    //     undefined,
+    //     TOKEN_2022_PROGRAM_ID,
+    // );
+    // console.log("Mint =====>", mintDetails);
 
-    // And we can even get the offchain JSON now
-    if (onChainMetadata?.uri) {
-        try {
-            const response = await fetch(onChainMetadata.uri);
-            const offChainMetadata = await response.json();
-            console.log("Mint offchain metadata =====>", offChainMetadata);
-        } catch (error) {
-            console.error("Error fetching or parsing offchain metadata:", error);
-        }
-    }
+    // // Since the mint stores the metadata in itself, we can just get it like this
+    // const onChainMetadata = await getTokenMetadata(connection, mint.publicKey);
+    // // Now we can see the metadata coming with the mint
+    // console.log("onchain metadata =====>", onChainMetadata);
+
+    // // And we can even get the offchain JSON now
+    // if (onChainMetadata?.uri) {
+    //     try {
+    //         const response = await fetch(onChainMetadata.uri);
+    //         const offChainMetadata = await response.json();
+    //         console.log("Mint offchain metadata =====>", offChainMetadata);
+    //     } catch (error) {
+    //         console.error("Error fetching or parsing offchain metadata:", error);
+    //     }
+    // }
 }
 
+// TODO: remove these
+// import fs from "fs";
 
-import fs from "fs";
+// function loadKeypairFromFile(filename: string): Keypair {
+//     const secret = JSON.parse(fs.readFileSync(filename).toString()) as number[];
+//     const secretKey = Uint8Array.from(secret);
+//     return Keypair.fromSecretKey(secretKey);
+// }
 
-function loadKeypairFromFile(filename: string): Keypair {
-    const secret = JSON.parse(fs.readFileSync(filename).toString()) as number[];
-    const secretKey = Uint8Array.from(secret);
-    return Keypair.fromSecretKey(secretKey);
-}
-
-await createStablebondToken(
-    loadKeypairFromFile("/Users/neo/.config/solana/id.json"),
-    new Connection("https://api.devnet.solana.com"),
-    "Pepega V1",
-    "PEPE",
-    "https://cdn3.emoji.gg/emojis/9716_Pepega.png",
-    "ustry"
-)
+// await createStablebondToken(
+//     loadKeypairFromFile("/Users/neo/.config/solana/id.json"),
+//     new Connection("https://api.devnet.solana.com"),
+//     "Pepega V1",
+//     "PEPE",
+//     "https://cdn3.emoji.gg/emojis/9716_Pepega.png",
+//     "ustry"
+// )

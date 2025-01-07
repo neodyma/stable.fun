@@ -8,22 +8,104 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { Check, ChevronsUpDown } from "lucide-react"
+import createStablebondToken from "@/scripts/createStablebondToken"
+
+interface StablebondCreatorProps extends React.HTMLAttributes<HTMLDivElement> {
+    onStablebondCreated: () => void;
+}
 
 const StablebondCreator = React.forwardRef<
     HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+    StablebondCreatorProps
+>(({ className, onStablebondCreated, ...props }, ref) => {
 
     const enabled_fiat = [
-        { value: 'us dollar', label: 'US Dollar' },
-        { value: 'euro', label: 'Euro' },
-        { value: 'british pound', label: 'British Pound' },
-        { value: 'mexican peso', label: 'Mexican Peso' },
-        { value: 'brazilian real', label: 'Brazilian Real' },
+        { value: 'ustry', label: 'US Dollar' },
+        { value: 'eurob', label: 'Euro' },
+        { value: 'gilts', label: 'British Pound' },
+        { value: 'cetes', label: 'Mexican Peso' },
+        { value: 'tesouro', label: 'Brazilian Real' },
     ]
+
+    const bondToFiat = {
+        "ustry": "USD",
+        "eurob": "EUR",
+        "gilts": "GBP",
+        "cetes": "MXN",
+        "tesouro": "BRL",
+    }
+
     const [open, setOpen] = useState(false)
-    const [selectedFiat, setSelectedFiat] = useState("")
+    const [name, setName] = useState<string>("Stable USD");
+    const [symbol, setSymbol] = useState<string>("StUSD");
+    const [iconUrl, setIconUrl] = useState<string>("https://example.com/icon.png");
+    const [selectedFiat, setSelectedFiat] = useState<keyof typeof bondToFiat>("ustry");
+
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    // const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+    // const [submitError, setSubmitError] = useState<string | null>(null);
+
+    const { connection } = useConnection()
+    const { publicKey, sendTransaction } = useWallet()
+
+    const handleSubmit = async () => {
+        // Reset feedback messages
+        // setSubmitSuccess(null);
+        // setSubmitError(null);
+
+        // Validate inputs
+        if (!name || !symbol || !iconUrl || !selectedFiat) {
+            // setSubmitError("Please fill in all the fields.");
+            return;
+        }
+
+        if (!publicKey) {
+            // setSubmitError("Wallet not connected.");
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // Call the createStablebondToken function
+            const { transaction, mint } = await createStablebondToken(
+                publicKey,
+                connection,
+                name,
+                symbol,
+                iconUrl,
+                selectedFiat
+            );
+
+            // Send the transaction, including the mint as a signer
+            const signature = await sendTransaction(transaction, connection, {
+                signers: [mint],
+            });
+
+            // Wait for confirmation
+            await connection.confirmTransaction(signature, "confirmed");
+
+            // Provide success feedback
+            // setSubmitSuccess(`Stablebond created successfully! Mint Address: ${mint.publicKey.toBase58()}`);
+
+            // Reset form fields
+            setName("Stable USD");
+            setSymbol("StUSD");
+            setIconUrl("https://example.com/icon.png");
+            setSelectedFiat(selectedFiat);
+
+            // Trigger the callback to refresh the table
+            onStablebondCreated();
+        } catch (error: any) {
+            console.error("Transaction failed:", error);
+            // setSubmitError(`Transaction failed: ${error.message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
 
     return (
         <Popover>
@@ -43,6 +125,8 @@ const StablebondCreator = React.forwardRef<
                             <Label htmlFor="bond-name">Name</Label>
                             <Input
                                 id="bond-name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 defaultValue="Stable USD"
                                 className="col-span-2 h-8"
                             />
@@ -51,6 +135,8 @@ const StablebondCreator = React.forwardRef<
                             <Label htmlFor="bond-symbol">Symbol</Label>
                             <Input
                                 id="bond-symbol"
+                                value={symbol}
+                                onChange={(e) => setSymbol(e.target.value)}
                                 defaultValue="StUSD"
                                 className="col-span-2 h-8"
                             />
@@ -59,6 +145,8 @@ const StablebondCreator = React.forwardRef<
                             <Label htmlFor="bond-icon">Icon</Label>
                             <Input
                                 id="bond-icon"
+                                value={iconUrl}
+                                onChange={(e) => setIconUrl(e.target.value)}
                                 defaultValue="https://example.com/icon.png"
                                 className="col-span-2 h-8"
                             />
@@ -85,7 +173,7 @@ const StablebondCreator = React.forwardRef<
                                                         key={fiat.value}
                                                         value={fiat.value}
                                                         onSelect={(curVal) => {
-                                                            setSelectedFiat(curVal === selectedFiat ? "" : curVal)
+                                                            setSelectedFiat(curVal as keyof typeof bondToFiat)
                                                             setOpen(false)
                                                         }}>
                                                         {fiat.label}
@@ -102,16 +190,8 @@ const StablebondCreator = React.forwardRef<
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        {/* <div className="grid grid-cols-3 items-center gap-4">
-                            <Label htmlFor="bond-supply">Max. supply</Label>
-                            <Input
-                                id="bond-supply"
-                                defaultValue="100000"
-                                className="col-span-2 h-8"
-                            />
-                        </div> */}
                         <div className="grid grid-cols-3 items-center gap-4">
-                            <Button>Submit</Button>
+                            <Button onClick={handleSubmit} disabled={isSubmitting || !publicKey || !selectedFiat}>{isSubmitting ? "Submitting..." : "Submit"}</Button>
                         </div>
                     </div>
                 </div>

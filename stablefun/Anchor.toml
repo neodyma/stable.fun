@@ -14,7 +14,7 @@ stablefun = "STBL1grL2qPy4fzVk7Ko2kY8Cb7EwKRYaGHaAptNdSr"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [test.validator]

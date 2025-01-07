@@ -30,13 +30,10 @@ pub mod stablefun {
         ctx.accounts.create(name, symbol, icon, fiat)
     }
 
-    // we are able to check all created coins using the approach documented here:
-    // https://solana.com/developers/cookbook/tokens/get-all-token-accounts
-
-    // mint a stablecoin to the user
-    pub fn mint_stablecoin(_ctx: Context<Todo>) -> Result<()> {
-        todo!();
-        Ok(())
+    // mint a stablecoin to the user in exchange for their deposit
+    pub fn deposit_fiat(ctx: Context<Deposit>, deposit_amount: u64) -> Result<()> {
+        let bump = ctx.bumps.mint_authority;
+        ctx.accounts.deposit(deposit_amount, bump)
     }
 
     // burn the coin from the user and return their deposit

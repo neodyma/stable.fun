@@ -3,9 +3,10 @@ import react from "@vitejs/plugin-react"
 import protobufPatch from "./src/plugins/protobuf-patch"
 import tailwindcss from 'tailwindcss'
 import { defineConfig } from "vite"
- 
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
+
 export default defineConfig({
-  plugins: [react(), protobufPatch()],
+  plugins: [react(), protobufPatch(), nodePolyfills()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -13,7 +14,9 @@ export default defineConfig({
   },
   css: {
     postcss: {
-      plugins: [tailwindcss()],
+      plugins: [
+        tailwindcss(),
+      ],
     },
   },
   server: {

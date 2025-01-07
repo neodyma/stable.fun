@@ -35,23 +35,19 @@ pub struct CreateStablefunCoin<'info> {
 
     #[account(init,
         payer = user,
-        mint::decimals = 9,
-        mint::authority = stablefun_market,
-        mint::freeze_authority = stablefun_market,
-        seeds = [b"stablefun_mint".as_ref(), user.key().as_ref()],
+        mint::decimals = 6,
+        mint::authority = mint_authority,
+        mint::freeze_authority = mint_authority,
+        seeds = [b"stablefun_mint".as_ref(),],
         bump
     )]
     pub token_mint: Account<'info, Mint>,
 
+    #[account(seeds = [b"stablefun_mint".as_ref()], bump)]
+    /// CHECK: we know this account
+    pub mint_authority: AccountInfo<'info>,
+
     #[account(mut)]
-    //     mut,
-    //     seeds = [
-    //         b"metadata",
-    //         MPL_TOKEN_METADATA_ID.as_ref(),
-    //         token_mint.key().as_ref(),
-    //     ],
-    //     bump
-    // )]
     /// CHECK: This is used to store the metadata for the token
     pub metadata: UncheckedAccount<'info>,
 
@@ -110,7 +106,7 @@ impl<'info> CreateStablefunCoin<'info> {
         let cpi_accounts = CreateMetadataAccountsV3 {
             metadata: self.metadata.to_account_info(),
             mint: self.token_mint.to_account_info(),
-            mint_authority: self.stablefun_market.to_account_info(),
+            mint_authority: self.mint_authority.to_account_info(),
             payer: self.user.to_account_info(),
             update_authority: self.user.to_account_info(),
             system_program: self.system_program.to_account_info(),
