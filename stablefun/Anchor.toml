@@ -5,10 +5,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-stablefun = "STBL1grL2qPy4fzVk7Ko2kY8Cb7EwKRYaGHaAptNdSr"
+stablefun = "STBLENdv2myCCC2aa2ehHukTK9UvK9vxrMbAh4JtWHq"
 
 [programs.localnet]
-stablefun = "STBL1grL2qPy4fzVk7Ko2kY8Cb7EwKRYaGHaAptNdSr"
+stablefun = "STBLENdv2myCCC2aa2ehHukTK9UvK9vxrMbAh4JtWHq"
 
 [registry]
 url = "https://api.apr.dev"
