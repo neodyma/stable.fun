@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { clusterApiUrl, Connection } from "@solana/web3.js";
-import type { Stablefun } from "../../../stablefun/target/types/stablefun";
-import idl from "../../../stablefun/target/idl/stablefun.json";
+import type { Stablefun } from "./stablefun";
+import idl from "./stablefun.json";
 
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 

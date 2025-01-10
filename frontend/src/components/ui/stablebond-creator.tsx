@@ -11,7 +11,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { Check, ChevronsUpDown } from "lucide-react"
 import createStablebondToken from "@/scripts/createStablebondToken"
-import { sendAndConfirmRawTransaction } from "@solana/web3.js"
 
 interface StablebondCreatorProps extends React.HTMLAttributes<HTMLDivElement> {
     onStablebondCreated: () => void;
