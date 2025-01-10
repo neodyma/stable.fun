@@ -44,8 +44,9 @@ function App() {
               <div className='flex justify-center bg-transparent p-4'>
                 <b className='text-3xl'>Dashboard</b>
               </div>
-              <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 justify-center gap-1 p-4'>
-                <Card className="text-center sm:text-left">
+              {/* <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 justify-center gap-1 p-4'> */}
+              <div className='flex justify-center gap-1 p-4'>
+                {/* <Card className="text-center sm:text-left">
                   <CardHeader>
                     <CardTitle>Portfolio Valuation</CardTitle>
                   </CardHeader>
@@ -77,8 +78,8 @@ function App() {
                   <CardFooter>
                     <p>+ 1234% in the last month</p>
                   </CardFooter>
-                </Card>
-                <Card className="text-center sm:text-left">
+                </Card> */}
+                <Card className="text-center">
                   <CardHeader>
                     <CardTitle>Create Stablebonds</CardTitle>
                   </CardHeader>

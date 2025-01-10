@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
     Table,
     TableBody,
@@ -19,6 +20,7 @@ import { PublicKey } from "@solana/web3.js"
 
 import fetchStablebondTokens from "@/scripts/fetchStablebondTokens"
 import { depositFiat } from "@/scripts/depositFiat"
+import { redeemToken } from "@/scripts/redeemToken"
 
 interface StablebondToken {
     pubkey: string;
@@ -43,13 +45,12 @@ const StablebondTable = React.forwardRef<
     const [stablebonds, setStablebonds] = useState<StablebondToken[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [amount, setAmount] = useState<string>("1")
 
     const wallet = useWallet()
 
-    const handleBuy = async (token: StablebondToken) => {
+    const handleBuy = async (token: StablebondToken, amount: number) => {
         try {
-            const amount = 1;
-
             const sig = await depositFiat(
                 wallet,
                 amount,
@@ -59,6 +60,18 @@ const StablebondTable = React.forwardRef<
             console.error("Deposit failed:", error);
         }
     };
+
+    const handleSell = async (token: StablebondToken, amount: number) => {
+        try {
+            const sig = await redeemToken(
+                wallet,
+                amount,
+                new PublicKey(token.mint)
+            );
+        } catch (error: any) {
+            console.error("Redeem failed:", error);
+        }
+    }
 
     useEffect(() => {
         const getStablebonds = async () => {
@@ -105,8 +118,8 @@ const StablebondTable = React.forwardRef<
             <TableCaption className="p-4">Investment at own risk. DYOR.</TableCaption>
             <TableHeader>
                 <TableRow>
-                    <TableCell className="pl-4 w-6/12">Stablebond</TableCell>
-                    <TableCell className="w-4/12">Supply</TableCell>
+                    <TableCell className="pl-4 w-7/12">Stablebond</TableCell>
+                    <TableCell className="w-3/12">Amount</TableCell>
                     {/* <TableCell className="w-2/12">Owned</TableCell> */}
                     <TableCell className="w-1/12 pr-4"></TableCell>
                     <TableCell className="w-1/12 pr-4"></TableCell>
@@ -128,13 +141,20 @@ const StablebondTable = React.forwardRef<
                                 </div>
                             </div>
                         </TableCell>
-                        <TableCell>{token.amount / 1e9}</TableCell>
+                        <TableCell>
+                            <Input
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                defaultValue={1}
+                                >
+                            </Input>
+                        </TableCell>
                         {/* <TableCell>{token.amount / 1e9}</TableCell> */}
                         <TableCell>
-                            <Button onClick={() => handleBuy(token)} disabled={!wallet.connected}>Buy</Button>
+                            <Button onClick={() => handleBuy(token, parseInt(amount))} disabled={!wallet.connected}>Buy</Button>
                         </TableCell>
                         <TableCell>
-                            <Button>Sell</Button>
+                            <Button onClick={() => handleSell(token, parseInt(amount))} disabled={!wallet.connected}>Sell</Button>
                         </TableCell>
                     </TableRow>
                 ))}

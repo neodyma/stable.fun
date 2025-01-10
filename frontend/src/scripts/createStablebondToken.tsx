@@ -7,11 +7,13 @@ import {
     createSetAuthorityInstruction,
     ExtensionType,
     getAccount,
+    getAccountLen,
     getAssociatedTokenAddressSync,
     getMint,
     getMintLen,
     getTokenMetadata,
     LENGTH_SIZE,
+    TOKEN_PROGRAM_ID,
     TOKEN_2022_PROGRAM_ID,
     TYPE_SIZE,
 } from "@solana/spl-token";
@@ -25,6 +27,7 @@ import {
     Connection,
     Keypair,
     PublicKey,
+    sendAndConfirmRawTransaction,
     sendAndConfirmTransaction,
     SystemProgram,
     Transaction
@@ -53,6 +56,14 @@ export default async function createStablebondToken(
     const mint = Keypair.generate()
     const decimals = 6
 
+    console.log("creating mint with parameters: ")
+    console.log(" name: ", name)
+    console.log(" symbol: ", symbol)
+    console.log(" uri: ", uri)
+    console.log(" bond: ", bond)
+    console.log(" mint: ", mint.publicKey.toBase58())
+    console.log(" connection: ", connection.rpcEndpoint)
+
     const metadata: TokenMetadata = {
         mint: mint.publicKey,
         name: bondToFiat[bond] + " " + name,
@@ -66,6 +77,8 @@ export default async function createStablebondToken(
         STABLEFUN_MARKET_ID
     );
 
+    console.log(" mintAuthority: ", mintAuthorityPDA.toBase58())
+
     const mintLen = getMintLen([ExtensionType.MetadataPointer])
     const metaLen = TYPE_SIZE + LENGTH_SIZE + pack(metadata).length
     const lamports = await connection.getMinimumBalanceForRentExemption(mintLen + metaLen)
@@ -78,11 +91,25 @@ export default async function createStablebondToken(
         space: mintLen,
     })
 
+    console.log("createMint, \n frompubkey: %s, \n newAccountPubkey: %s, \n programId: %s, \n space: %s",
+        payer.toBase58(),
+        mint.publicKey.toBase58(),
+        TOKEN_2022_PROGRAM_ID.toBase58(),
+        mintLen
+    )
+
     const initMetaPointerInstr = createInitializeMetadataPointerInstruction(
         mint.publicKey,
         payer,
         mint.publicKey,
         TOKEN_2022_PROGRAM_ID,
+    )
+
+    console.log("initMetaPointer, \n mint: %s, \n payer: %s, \n metadata: %s, \n programId: %s",
+        mint.publicKey.toBase58(),
+        payer.toBase58(),
+        mint.publicKey.toBase58(),
+        TOKEN_2022_PROGRAM_ID.toBase58()
     )
 
     const initMintInstr = createInitializeMintInstruction(
@@ -91,6 +118,14 @@ export default async function createStablebondToken(
         payer,
         payer,
         TOKEN_2022_PROGRAM_ID,
+    )
+
+    console.log("initMint, \n mint: %s, \n decimals: %s, \n mintAuthority: %s, \n freezeAuthority: %s, \n programId: %s",
+        mint.publicKey.toBase58(),
+        decimals,
+        payer.toBase58(),
+        payer.toBase58(),
+        TOKEN_2022_PROGRAM_ID.toBase58()
     )
 
     const initMetaInstr = createInitializeInstruction({
@@ -104,6 +139,17 @@ export default async function createStablebondToken(
         updateAuthority: payer,
     })
 
+    console.log("initMeta, \n programId: %s, \n mint: %s, \n metadata: %s, \n name: %s, \n symbol: %s, \n uri: %s, \n mintAuthority: %s, \n updateAuthority: %s",
+        TOKEN_2022_PROGRAM_ID.toBase58(),
+        mint.publicKey.toBase58(),
+        mint.publicKey.toBase58(),
+        metadata.name,
+        metadata.symbol,
+        metadata.uri,
+        payer.toBase58(),
+        payer.toBase58()
+    )
+
     const updateMetaInstr = createUpdateFieldInstruction({
         programId: TOKEN_2022_PROGRAM_ID,
         metadata: mint.publicKey,
@@ -111,6 +157,14 @@ export default async function createStablebondToken(
         field: metadata.additionalMetadata[0][0],
         value: metadata.additionalMetadata[0][1],
     })
+
+    console.log("updateMeta, \n programId: %s, \n metadata: %s, \n updateAuthority: %s, \n field: %s, \n value: %s",
+        TOKEN_2022_PROGRAM_ID.toBase58(),
+        mint.publicKey.toBase58(),
+        payer.toBase58(),
+        metadata.additionalMetadata[0][0],
+        metadata.additionalMetadata[0][1]
+    )
 
     const userAta = getAssociatedTokenAddressSync(
         mint.publicKey,
@@ -127,6 +181,14 @@ export default async function createStablebondToken(
         TOKEN_2022_PROGRAM_ID,
     )
 
+    console.log("createUserAta, \n payer: %s, \n userAta: %s, \n owner: %s, \n mint: %s, \n programId: %s",
+        payer.toBase58(),
+        userAta.toBase58(),
+        payer.toBase58(),
+        mint.publicKey.toBase58(),
+        TOKEN_2022_PROGRAM_ID.toBase58()
+    )
+
     const stablefunAta = getAssociatedTokenAddressSync(
         mint.publicKey,
         STABLEFUN_MARKET_ID,
@@ -140,6 +202,14 @@ export default async function createStablebondToken(
         STABLEFUN_MARKET_ID,
         mint.publicKey,
         TOKEN_2022_PROGRAM_ID,
+    )
+
+    console.log("createStablefunAta, \n payer: %s, \n stablefunAta: %s, \n owner: %s, \n mint: %s, \n programId: %s",
+        payer.toBase58(),
+        stablefunAta.toBase58(),
+        STABLEFUN_MARKET_ID.toBase58(),
+        mint.publicKey.toBase58(),
+        TOKEN_2022_PROGRAM_ID.toBase58()
     )
 
     // const mintInstr = createMintToCheckedInstruction(
@@ -162,6 +232,15 @@ export default async function createStablebondToken(
         TOKEN_2022_PROGRAM_ID,
     )
 
+    console.log("mintInstr, \n mint: %s, \n dest: %s, \n authority: %s, \n amount: %s, \n decimals: %s, \n programId: %s",
+        mint.publicKey.toBase58(),
+        stablefunAta.toBase58(),
+        payer.toBase58(),
+        100e9,
+        decimals,
+        TOKEN_2022_PROGRAM_ID.toBase58()
+    )
+
     // update authorities to the stablefun market
     const setMintAuthorityInstr = createSetAuthorityInstruction(
         mint.publicKey,
@@ -172,6 +251,14 @@ export default async function createStablebondToken(
         TOKEN_2022_PROGRAM_ID
     )
 
+    console.log("setMintAuthority, \n mint: %s, \n authority: %s, \n authorityType: %s, \n newAuthority: %s, \n programId: %s",
+        mint.publicKey.toBase58(),
+        payer.toBase58(),
+        AuthorityType.MintTokens,
+        mintAuthorityPDA.toBase58(),
+        TOKEN_2022_PROGRAM_ID.toBase58()
+    )
+
     const setOwnerInstr = createSetAuthorityInstruction(
         mint.publicKey,
         payer,
@@ -179,6 +266,14 @@ export default async function createStablebondToken(
         STABLEFUN_MARKET_ID,
         undefined,
         TOKEN_2022_PROGRAM_ID
+    )
+
+    console.log("setOwner, \n mint: %s, \n authority: %s, \n authorityType: %s, \n newAuthority: %s, \n programId: %s",
+        mint.publicKey.toBase58(),
+        payer.toBase58(),
+        AuthorityType.FreezeAccount,
+        STABLEFUN_MARKET_ID.toBase58(),
+        TOKEN_2022_PROGRAM_ID.toBase58()
     )
 
     const transaction = new Transaction().add(

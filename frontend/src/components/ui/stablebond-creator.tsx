@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { Check, ChevronsUpDown } from "lucide-react"
 import createStablebondToken from "@/scripts/createStablebondToken"
+import { sendAndConfirmRawTransaction } from "@solana/web3.js"
 
 interface StablebondCreatorProps extends React.HTMLAttributes<HTMLDivElement> {
     onStablebondCreated: () => void;
@@ -50,6 +51,9 @@ const StablebondCreator = React.forwardRef<
     const { connection } = useConnection()
     const { publicKey, sendTransaction } = useWallet()
 
+    console.log("creator connection", connection.rpcEndpoint)
+    console.log("wallet publicKey", publicKey?.toBase58())
+
     const handleSubmit = async () => {
         // Reset feedback messages
         // setSubmitSuccess(null);
@@ -78,6 +82,8 @@ const StablebondCreator = React.forwardRef<
                 iconUrl,
                 selectedFiat
             );
+
+            const blockhash = connection.getLatestBlockhash()
 
             // Send the transaction, including the mint as a signer
             const signature = await sendTransaction(transaction, connection, {
