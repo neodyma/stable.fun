@@ -13,7 +13,7 @@ npm run dev
 
 and open the hosted website on a browser.
 
-The smart contract is deployed to the address ..., after redeploying the hardcoded public keys have to be updated accordingly (both in the contract source code and `frontend/utils/stablefun-utils.tsx`).
+The smart contract is deployed to the address `STBLENdv2myCCC2aa2ehHukTK9UvK9vxrMbAh4JtWHq`, after redeploying the hardcoded public keys have to be updated accordingly (both in the contract source code and `frontend/utils/stablefun-utils.tsx`).
 
 ## Using the platform
 
